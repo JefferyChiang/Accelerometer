@@ -28,8 +28,8 @@ maxz = 0.488912852
 mapmin = -100
 mapmax = 100
 
-fs=100 #512
-cutoff=50 #10
+fs=50 #512
+cutoff=10 #10
 numtaps=155 #155
 
 def calibrate(data, mind, maxd, minm, maxm):
@@ -159,62 +159,116 @@ res = combine_threshold(comb_data)
 plot_a(res, 0.1)
 plt.ylim(-0.7,0.7)
 
-# 實測
-df = pd.read_csv(r".\data\right2.csv")
-df = df.iloc[40:-20,:]
-data = combine_calibrate(df)
-data_center = center(data)
-#median_data = pd.DataFrame(median_filter(data_center, 5))
-data_filter = pd.DataFrame(freq_filter(data_center, numtaps, cutoff/fs)[:])
-#data_center = center(data_filter)
-res = pd.DataFrame(combine_threshold(data_filter))
-res.columns = ['x','y','z']
+def combine_all(path):
+    df = pd.read_csv(path)
+    data = combine_calibrate(df)
+    data_center = center(data)
+    #median_data = pd.DataFrame(median_filter(data, 5))
+    data_filter = pd.DataFrame(freq_filter(data_center, numtaps, cutoff/fs)[:])
+    res = pd.DataFrame(combine_threshold(data_filter))
+    # 校正
+    plot_a(data, 0.1)
+    
+    # 中心化
+    plot_a(data_center, 0.1)
+    plt.ylim(-0.7,0.7)
+    # 中值濾波
+    #plot_a(median_data, 0.1)
 
-plot_freq = 0.05
-# 校正
+    # 中值+低通濾波
+    plot_a(data_filter, 0.1)
+    plt.ylim(-0.7,0.7)
+
+    # 門檻值
+    #plot_a(res, 0.1)
+    #plt.ylim(-0.7,0.7)
+    return res
+# 實測
+'''
+df = pd.read_csv(r".\data\put.csv")
+data = combine_calibrate(df)
+median_data = pd.DataFrame(median_filter(data, 5))
+data_filter = pd.DataFrame(freq_filter(median_data, numtaps, cutoff/fs)[:])
+data_center = center(data_filter)
+res = pd.DataFrame(combine_threshold(data_center))
+'''
+res_get = combine_all(r".\data\right2.csv")
+res_go = combine_all(r".\data\go.csv")
+res_put = combine_all(r".\data\put.csv")
 plt.close('all')
-plot_a(data, plot_freq)
+
+res_all = combine_all(r".\data\all.csv")
+# 校正
+#plot_a(data, 0.1)
 
 # 中值濾波
 #plot_a(median_data, 0.1)
 
-# 中心化
-plot_a(data_center, plot_freq)
-plt.ylim(-0.7,0.7)
-
 # 中值+低通濾波
-plot_a(data_filter, plot_freq)
-plt.ylim(-0.7,0.7)
+#plot_a(data_filter, 0.1)
 
-# 門檻值
-#plot_a(res, plot_freq)
+# 中心化
+#plot_a(data_center, 0.1)
 #plt.ylim(-0.7,0.7)
 
+# 門檻值
+#plot_a(res, 0.1)
+#plt.ylim(-0.7,0.7)
+#res = pd.concat([res_get, res_go, res_put],axis=0)
+res_get.columns = ['x','y','z']
+res_go.columns = ['x','y','z']
+#res_go['x'] = 0
+res_go['z'] = 0
+res_put.columns = ['x','y','z']
+res_put['x'] = -res_put['x']
+#print(res)
 # 積分運算
-freq = 0.0125 # 積分間格
+freq1 = 0.007 #for example freq=10 if you have 10 records per second
+freq2 = 0.03
+freq3 = 0.012
 # 9800 mm/s^2
 
+def v(res, freq):
+    return 9800*res["x"].cumsum() * freq, 9800*res["y"].cumsum() * freq, 9800*res["z"].cumsum() * freq
+
+def d(res, freq):
+    return ((9800*res["x"].cumsum() * freq).cumsum() * freq), ((9800*res["y"].cumsum() * freq).cumsum() * freq), ((9800*res["z"].cumsum() * freq).cumsum() * freq)
+
 # 一次積分速度
-v_x = ((9800*res["x"].cumsum() * freq))
-plot_v(v_x, plot_freq, 'Vx(mm/s)')
-v_y = ((9800*res["y"].cumsum() * freq))
-plot_v(v_y, plot_freq, 'Vy(mm/s)')
-v_z = ((9800*res["z"].cumsum() * freq))
-plot_v(v_z, plot_freq, 'Vz(mm/s)')
+v_x_get, v_y_get, v_z_get = v(res_get, freq1)
+v_x_go, v_y_go, v_z_go = v(res_go, freq2)
+v_x_put, v_y_put, v_z_put = v(res_put, freq3)
+
+v_x_all = pd.concat([v_x_get, v_x_go+v_x_get.iloc[-1], v_x_put+v_x_get.iloc[-1]+v_x_go.iloc[-1]], axis=0)
+v_y_all = pd.concat([v_y_get, v_y_go+v_y_get.iloc[-1], v_y_put+v_y_get.iloc[-1]+v_y_go.iloc[-1]], axis=0)
+v_z_all = pd.concat([v_z_get, v_z_go+v_z_get.iloc[-1], v_z_put+v_z_get.iloc[-1]+v_z_go.iloc[-1]], axis=0)
+plot_v(v_x_all, 0.05, 'Vx(mm/s)')
+plot_v(v_y_all, 0.05, 'Vy(mm/s)')
+plot_v(v_z_all, 0.05, 'Vz(mm/s)')
+
 
 # 二次積分位移
-dis_x = ((9800*res["x"].cumsum() * freq).cumsum() * freq)
-plot_d(dis_x, plot_freq, 'Dx(mm)')
-dis_y = ((9800*res["y"].cumsum() * freq).cumsum() * freq)
-plot_d(dis_y, plot_freq, 'Dy(mm)')
-dis_z = ((9800*res["z"].cumsum() * freq).cumsum() * freq)
-plot_d(dis_z, plot_freq, 'Dz(mm)')
+d_x_get, d_y_get, d_z_get = d(res_get, freq1)
+d_x_go, d_y_go, d_z_go = d(res_go, freq2)
+d_x_put, d_y_put, d_z_put = d(res_put, freq3)
+d_x_all = pd.concat([d_x_get, d_x_go+d_x_get.iloc[-1], d_x_put+d_x_get.iloc[-1]+d_x_go.iloc[-1]], axis=0)
+d_y_all = pd.concat([d_y_get, d_y_go+d_y_get.iloc[-1], d_y_put+d_y_get.iloc[-1]+d_y_go.iloc[-1]], axis=0)
+d_z_all = pd.concat([d_z_get, d_z_go+d_z_get.iloc[-1], d_z_put+d_z_get.iloc[-1]+d_z_go.iloc[-1]], axis=0)
+plot_d(d_x_all, 0.05, 'Dx(mm)')
+plot_d(d_y_all, 0.05, 'Dy(mm)')
+plot_d(d_z_all, 0.05, 'Dz(mm)')
 
 # 3D位移
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
-ax.plot(dis_x,dis_y,dis_z)
+ax.plot(pd.concat([d_x_get, d_x_go+d_x_get.iloc[-1], d_x_put+d_x_get.iloc[-1]+d_x_go.iloc[-1]], axis=0),
+        pd.concat([d_y_get, d_y_go+d_y_get.iloc[-1], d_y_put+d_y_get.iloc[-1]+d_y_go.iloc[-1]], axis=0),
+        pd.concat([d_z_get, d_z_go+d_z_get.iloc[-1], d_z_put+d_z_get.iloc[-1]+d_z_go.iloc[-1]], axis=0),)
 ax.set_xlabel("x(mm)")
 ax.set_ylabel("y(mm)")
 ax.set_zlabel("z(mm)")
+ax.set_xlim(-100,100)
+ax.set_ylim(-50,250)
+ax.set_zlim(-100,100)
+
 plt.show()
