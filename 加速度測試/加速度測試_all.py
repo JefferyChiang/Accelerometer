@@ -159,7 +159,7 @@ res = combine_threshold(comb_data)
 plot_a(res, 0.1)
 plt.ylim(-0.7,0.7)
 
-def combine_all(path):
+def combine_all(path, plot_freq):
     df = pd.read_csv(path)
     data = combine_calibrate(df)
     data_center = center(data)
@@ -167,16 +167,16 @@ def combine_all(path):
     data_filter = pd.DataFrame(freq_filter(data_center, numtaps, cutoff/fs)[:])
     res = pd.DataFrame(combine_threshold(data_filter))
     # 校正
-    plot_a(data, 0.1)
+    plot_a(data, plot_freq)
     
     # 中心化
-    plot_a(data_center, 0.1)
+    plot_a(data_center, plot_freq)
     plt.ylim(-0.7,0.7)
     # 中值濾波
     #plot_a(median_data, 0.1)
 
     # 中值+低通濾波
-    plot_a(data_filter, 0.1)
+    plot_a(data_filter, plot_freq)
     plt.ylim(-0.7,0.7)
 
     # 門檻值
@@ -192,12 +192,15 @@ data_filter = pd.DataFrame(freq_filter(median_data, numtaps, cutoff/fs)[:])
 data_center = center(data_filter)
 res = pd.DataFrame(combine_threshold(data_center))
 '''
-res_get = combine_all(r".\data\right2.csv")
-res_go = combine_all(r".\data\go.csv")
-res_put = combine_all(r".\data\put.csv")
+
+plot_freq = 0.05
+
+res_get = combine_all(r".\data\right2.csv",plot_freq)
+res_go = combine_all(r".\data\go.csv",plot_freq)
+res_put = combine_all(r".\data\put.csv",plot_freq)
 plt.close('all')
 
-res_all = combine_all(r".\data\all.csv")
+res_all = combine_all(r".\data\all.csv",plot_freq)
 # 校正
 #plot_a(data, 0.1)
 
@@ -221,11 +224,17 @@ res_go.columns = ['x','y','z']
 res_go['z'] = 0
 res_put.columns = ['x','y','z']
 res_put['x'] = -res_put['x']
+
+res_get["z"] = -res_get["z"]
+res_go["z"] = -res_go["z"]
+res_put["z"] = -res_put["z"]
 #print(res)
+
+
 # 積分運算
-freq1 = 0.007 #for example freq=10 if you have 10 records per second
+freq1 = 0.009 #for example freq=10 if you have 10 records per second
 freq2 = 0.03
-freq3 = 0.012
+freq3 = 0.016
 # 9800 mm/s^2
 
 def v(res, freq):
@@ -242,9 +251,9 @@ v_x_put, v_y_put, v_z_put = v(res_put, freq3)
 v_x_all = pd.concat([v_x_get, v_x_go+v_x_get.iloc[-1], v_x_put+v_x_get.iloc[-1]+v_x_go.iloc[-1]], axis=0)
 v_y_all = pd.concat([v_y_get, v_y_go+v_y_get.iloc[-1], v_y_put+v_y_get.iloc[-1]+v_y_go.iloc[-1]], axis=0)
 v_z_all = pd.concat([v_z_get, v_z_go+v_z_get.iloc[-1], v_z_put+v_z_get.iloc[-1]+v_z_go.iloc[-1]], axis=0)
-plot_v(v_x_all, 0.05, 'Vx(mm/s)')
-plot_v(v_y_all, 0.05, 'Vy(mm/s)')
-plot_v(v_z_all, 0.05, 'Vz(mm/s)')
+plot_v(v_x_all, plot_freq, 'Vx(mm/s)')
+plot_v(v_y_all, plot_freq, 'Vy(mm/s)')
+plot_v(v_z_all, plot_freq, 'Vz(mm/s)')
 
 
 # 二次積分位移
@@ -254,9 +263,9 @@ d_x_put, d_y_put, d_z_put = d(res_put, freq3)
 d_x_all = pd.concat([d_x_get, d_x_go+d_x_get.iloc[-1], d_x_put+d_x_get.iloc[-1]+d_x_go.iloc[-1]], axis=0)
 d_y_all = pd.concat([d_y_get, d_y_go+d_y_get.iloc[-1], d_y_put+d_y_get.iloc[-1]+d_y_go.iloc[-1]], axis=0)
 d_z_all = pd.concat([d_z_get, d_z_go+d_z_get.iloc[-1], d_z_put+d_z_get.iloc[-1]+d_z_go.iloc[-1]], axis=0)
-plot_d(d_x_all, 0.05, 'Dx(mm)')
-plot_d(d_y_all, 0.05, 'Dy(mm)')
-plot_d(d_z_all, 0.05, 'Dz(mm)')
+plot_d(d_x_all, plot_freq, 'Dx(mm)')
+plot_d(d_y_all, plot_freq, 'Dy(mm)')
+plot_d(d_z_all, plot_freq, 'Dz(mm)')
 
 # 3D位移
 fig = plt.figure()
@@ -270,5 +279,6 @@ ax.set_zlabel("z(mm)")
 ax.set_xlim(-100,100)
 ax.set_ylim(-50,250)
 ax.set_zlim(-100,100)
+ax.invert_xaxis()
 
 plt.show()

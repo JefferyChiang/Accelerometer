@@ -28,8 +28,8 @@ maxz = 0.488912852
 mapmin = -100
 mapmax = 100
 
-fs=100 #512
-cutoff=50 #10
+fs=50 #512
+cutoff=10 #10
 numtaps=155 #155
 
 def calibrate(data, mind, maxd, minm, maxm):
@@ -119,6 +119,7 @@ def plot_d(data, t, yl):
 
 # 讀取靜止加速度
 df = pd.read_csv(r".\data\30.csv")
+df.plot()
 
 # 校正
 data = combine_calibrate(df)
@@ -161,7 +162,7 @@ plt.ylim(-0.7,0.7)
 
 # 實測
 df = pd.read_csv(r".\data\right2.csv")
-df = df.iloc[40:-20,:]
+df = df.iloc[40:-5,:]
 data = combine_calibrate(df)
 data_center = center(data)
 #median_data = pd.DataFrame(median_filter(data_center, 5))
@@ -172,7 +173,7 @@ res.columns = ['x','y','z']
 
 plot_freq = 0.05
 # 校正
-plt.close('all')
+
 plot_a(data, plot_freq)
 
 # 中值濾波
@@ -191,8 +192,11 @@ plt.ylim(-0.7,0.7)
 #plt.ylim(-0.7,0.7)
 
 # 積分運算
-freq = 0.0125 # 積分間格
+freq = 0.018 # 積分間格
 # 9800 mm/s^2
+
+res["z"] = -res["z"]
+
 
 # 一次積分速度
 v_x = ((9800*res["x"].cumsum() * freq))
